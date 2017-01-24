@@ -39,6 +39,24 @@ int main(int argc, const char *argv[]) {
         exit(1);
     }
 
+    fseek(logfile, 0, SEEK_END);
+    if (ftell(logfile) < 1) {
+        printf("%s", "Writing key id row to log file.\n");
+        
+        fprintf(logfile, "%s", "timestamp,");
+        for (int i = 0; i < numberOfKeys; i++) {
+            const char *delimiter = ",";
+            const char *finalDelimiter = "\n";
+
+            if (i == numberOfKeys - 1) {
+                fprintf(logfile, "\"%s\"%s", convertKeyCode(i), finalDelimiter);
+            }
+            else {
+                fprintf(logfile, "\"%s\"%s", convertKeyCode(i), delimiter);
+            }
+        }
+    }
+
     // Output to logfile.
     // fprintf(logfile, "\n\nKeylogging has begun.\n%s\n", asctime(localtime(&result)));
     fflush(logfile);
@@ -58,14 +76,14 @@ CGEventRef CGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
     // Retrieve the incoming keycode.
     CGKeyCode keyCode = (CGKeyCode) CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
 
-    if (strcmp(convertKeyCode(keyCode), "[unknown]") != 0) {
-        keystrokes[keyCode]++;
-        keystrokesCounter++;
+    // if (strcmp(convertKeyCode(keyCode), "[unknown]") != 0) {
+    keystrokes[keyCode]++;
+    keystrokesCounter++;
 
-        if (keystrokesCounter >= 10) {
-            flushKeystrokes(keystrokes);
-        }
+    if (keystrokesCounter >= 10) {
+        flushKeystrokes(keystrokes);
     }
+    // }
 
     // Print the human readable key to the logfile.
     // fflush(logfile);
@@ -74,28 +92,30 @@ CGEventRef CGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef e
 }
 
 const int flushKeystrokes(int keystrokes[127]) {
-    const int numberOfKeys = 128;
     time_t result = time(NULL);
+    fprintf(stdout, "%sWriting to log file.\n", asctime(localtime(&result)));
+    fprintf(logfile, "\"%.13s\",", asctime(localtime(&result)));
 
-    printf("\"%s\":{", asctime(localtime(&result)));
     for (int i = 0; i < numberOfKeys; i++) {
         int keystroke = keystrokes[i];
         char *delimiter = ",";
-        char *finalDelimiter = "";
+        char *finalDelimiter = "\n";
 
         if (i == numberOfKeys - 1) {
-            printf("\"%s\":%d%s", convertKeyCode(i), keystroke, finalDelimiter);
+            fprintf(logfile, "%d%s", keystroke, finalDelimiter);
         }
         else {
-            printf("\"%s\":%d%s", convertKeyCode(i), keystroke, delimiter);
+            fprintf(logfile, "%d%s", keystroke, delimiter);
         }
 
         keystrokes[i] = 0;
     }
-    printf("},");
 
     // fprintf(logfile, "%s,", convertKeyCode(keyCode));
     keystrokesCounter = 0;
+
+    fflush(logfile);
+    
     return 1;
 }
 
